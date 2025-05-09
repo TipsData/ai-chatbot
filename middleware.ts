@@ -1,59 +1,35 @@
-import { NextResponse, type NextRequest } from 'next/server';
-import { getToken } from 'next-auth/jwt';
-import { guestRegex, isDevelopmentEnvironment } from './lib/constants';
+import { NextResponse } from 'next/server';
+import { authMiddleware } from '@clerk/nextjs/server';
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+export default authMiddleware({
+  publicRoutes: ['/ping', '/login', '/register'],
+  afterAuth(auth, req) {
+    const { pathname } = req.nextUrl;
 
-  /*
-   * Playwright starts the dev server and requires a 200 status to
-   * begin the tests, so this ensures that the tests can start
-   */
-  if (pathname.startsWith('/ping')) {
-    return new Response('pong', { status: 200 });
-  }
+    if (pathname.startsWith('/ping')) {
+      return new Response('pong', { status: 200 });
+    }
 
-  if (pathname.startsWith('/api/auth')) {
+    // Redirect to login if not authenticated
+    if (!auth.userId && !pathname.startsWith('/login') && !pathname.startsWith('/register')) {
+      const redirectUrl = encodeURIComponent(req.url);
+      return NextResponse.redirect(
+        new URL(`/login?redirect_url=${redirectUrl}`, req.url),
+      );
+    }
+
+    // Redirect authenticated users away from auth pages
+    if (auth.userId && ['/login', '/register'].includes(pathname)) {
+      return NextResponse.redirect(new URL('/', req.url));
+    }
+
     return NextResponse.next();
   }
+});
 
-  const token = await getToken({
-    req: request,
-    secret: process.env.AUTH_SECRET,
-    secureCookie: !isDevelopmentEnvironment,
-  });
-
-  if (!token) {
-    const redirectUrl = encodeURIComponent(request.url);
-
-    return NextResponse.redirect(
-      new URL(`/api/auth/guest?redirectUrl=${redirectUrl}`, request.url),
-    );
-  }
-
-  const isGuest = guestRegex.test(token?.email ?? '');
-
-  if (token && !isGuest && ['/login', '/register'].includes(pathname)) {
-    return NextResponse.redirect(new URL('/', request.url));
-  }
-
-  return NextResponse.next();
-}
-
+// This example protects all routes including api/trpc routes
+// Please edit this to allow other routes to be public as needed.
+// See https://clerk.com/docs/references/nextjs/auth-middleware for more information about configuring your middleware
 export const config = {
-  matcher: [
-    '/',
-    '/chat/:id',
-    '/api/:path*',
-    '/login',
-    '/register',
-
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico, sitemap.xml, robots.txt (metadata files)
-     */
-    '/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
-  ],
+  matcher: ['/((?!.+\\.[\\w]+$|_next).*)', '/', '/(api|trpc)(.*)'],
 };

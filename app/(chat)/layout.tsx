@@ -1,9 +1,9 @@
 import { cookies } from 'next/headers';
-
+import { auth } from '@clerk/nextjs/server';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
-import { auth } from '../(auth)/auth';
 import Script from 'next/script';
+import type { User } from '@/lib/db/schema';
 
 export const experimental_ppr = true;
 
@@ -15,6 +15,12 @@ export default async function Layout({
   const [session, cookieStore] = await Promise.all([auth(), cookies()]);
   const isCollapsed = cookieStore.get('sidebar:state')?.value !== 'true';
 
+  const user: User | undefined = session.userId ? {
+    id: session.userId,
+    email: session.sessionClaims?.email as string,
+    password: null
+  } : undefined;
+
   return (
     <>
       <Script
@@ -22,7 +28,7 @@ export default async function Layout({
         strategy="beforeInteractive"
       />
       <SidebarProvider defaultOpen={!isCollapsed}>
-        <AppSidebar user={session?.user} />
+        <AppSidebar user={user} />
         <SidebarInset>{children}</SidebarInset>
       </SidebarProvider>
     </>
