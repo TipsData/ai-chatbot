@@ -1,23 +1,31 @@
-import 'next-auth';
+import type { DefaultJWT } from "next-auth/jwt";
+import type { DefaultSession } from "next-auth";
 
-declare module 'next-auth' {
+export type UserType = "cognito";
+
+declare module "next-auth" {
   interface Session {
-    user?: {
-      id?: string;
-      type?: 'cognito';
-      email?: string | null;
+    user: {
+      id: string;
+      type: UserType;
       name?: string | null;
-      image?: string | null;
-    };
+      email?: string | null;
+    } & DefaultSession["user"];
+  }
+
+  interface User {
+    id?: string;
+    sub?: string; // Add sub for Cognito
+    type?: UserType;
+    name?: string | null;
+    email?: string | null;
   }
 }
 
-declare module 'next-auth/jwt' {
+declare module "next-auth/jwt" {
   interface JWT {
     id: string;
-    type: 'cognito';
-    email?: string | null;
-    name?: string | null;
-    picture?: string | null;
+    type: UserType;
+    email?: string;
   }
-} 
+}

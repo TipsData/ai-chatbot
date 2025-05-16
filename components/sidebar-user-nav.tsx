@@ -27,6 +27,25 @@ export function SidebarUserNav({ user }: { user: User }) {
   const { data, status } = useSession();
   const { setTheme, theme } = useTheme();
 
+  const handleSignOut = async () => {  
+    try {  
+      console.log('Initiating sign-out...');  
+      const data = await signOut({ redirect: false });  
+      console.log('Sign-out successful:', data);  
+      router.push('/');  
+      toast({  
+        type: 'success',  
+        description: 'Signed out successfully',  
+      });  
+    } catch (error) {  
+      console.error('Sign-out error:', error);  
+      toast({  
+        type: 'error',  
+        description: 'Failed to sign out. Please try again.',  
+      });  
+    }  
+  };  
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -80,17 +99,7 @@ export function SidebarUserNav({ user }: { user: User }) {
               <button
                 type="button"
                 className="w-full cursor-pointer"
-                onClick={() => {
-                  if (status === 'loading') {
-                    toast({
-                      type: 'error',
-                      description:
-                        'Checking authentication status, please try again!',
-                    });
-                    return;
-                  }
-                  signOut({ redirectTo: '/' });
-                }}
+                onClick={handleSignOut}
               >
                 Sign out
               </button>
